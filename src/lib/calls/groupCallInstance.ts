@@ -96,6 +96,9 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   get state() {
+    if(this.connections.rtmp) {
+      return this.connections.rtmp.connectionRTMP.state;
+    }
     const {connectionState} = this;
     if(connectionState === 'closed') {
       return GROUP_CALL_STATE.CLOSED;
@@ -135,6 +138,9 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   public get streamManager(): StreamManager {
+    if(this.connections.rtmp) {
+      return;
+    }
     return this.connections.main.streamManager;
   }
 
@@ -339,7 +345,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
     }
 
     if(!rejoin) {
-      const d = discard || (this.joined ? this.connections.main.sources.audio.source : undefined);
+      const d = this.connections.rtmp ? discard || 1 : discard || (this.joined ? this.connections.main.sources.audio.source : undefined);
       this.managers.appGroupCallsManager.hangUp(this.id, d);
     }
   }
@@ -462,6 +468,9 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   public onParticipantUpdate(participant: GroupCallParticipant, doNotDispatchParticipantUpdate?: PeerId) {
+    if(this.connections.rtmp) {
+      return;
+    }
     const connectionInstance = this.connections.main;
     const {connection, description} = connectionInstance;
 

@@ -235,7 +235,7 @@ export class AppDocsManager extends AppManager {
       doc.file_name = `${doc.type}_${date}${ext ? '.' + ext : ''}`;
     }
 
-    if(appManagersManager.isServiceWorkerOnline && ((doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio' || doc.type === 'video')/*  || doc.mime_type.indexOf('video/') === 0 */) {
+    if(appManagersManager.isServiceWorkerOnline && ((doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio')/*  || doc.mime_type.indexOf('video/') === 0 */) {
       doc.supportsStreaming = true;
 
       const cacheContext = this.thumbsStorage.getCacheContext(doc);

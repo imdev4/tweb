@@ -12,7 +12,7 @@
 import type GroupCallConnectionInstance from '../calls/groupCallConnectionInstance';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
 import {nextRandomUint} from '../../helpers/random';
-import {DataJSON, GroupCall, GroupCallParticipant, GroupCallParticipantVideoSourceGroup, InputGroupCall, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update, Updates} from '../../layer';
+import {DataJSON, GroupCall, GroupCallParticipant, GroupCallParticipantVideoSourceGroup, InputGroupCall, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update, Updates, InputFileLocation} from '../../layer';
 import {logger} from '../logger';
 import {NULL_PEER_ID} from '../mtproto/mtproto_config';
 import {AppManager} from './manager';
@@ -21,7 +21,7 @@ import getPeerId from './utils/peers/getPeerId';
 export type GroupCallId = GroupCall['id'];
 export type MyGroupCall = GroupCall | InputGroupCall;
 
-export type GroupCallConnectionType = 'main' | 'presentation';
+export type GroupCallConnectionType = 'main' | 'presentation' | 'rtmp';
 
 export type JoinGroupCallJsonPayload = {
   fingerprints: {
@@ -242,11 +242,12 @@ export class AppGroupCallsManager extends AppManager {
     return call;
   }
 
-  public async createGroupCall(chatId: ChatId, scheduleDate?: number, title?: string) {
+  public async createGroupCall(chatId: ChatId, scheduleDate?: number, title?: string, rtmpStream?: boolean) {
     const updates = await this.apiManager.invokeApi('phone.createGroupCall', {
       peer: this.appPeersManager.getInputPeerById(chatId.toPeerId(true)),
       random_id: nextRandomUint(32),
       schedule_date: scheduleDate,
+      rtmp_stream: rtmpStream,
       title
     });
 
@@ -357,6 +358,15 @@ export class AppGroupCallsManager extends AppManager {
 
       promise = this.apiManager.invokeApi('phone.joinGroupCall', request);
       this.log(`[api] joinGroupCall id=${groupCallId}`, request);
+    } else if(options.type === 'rtmp') {
+      const request: PhoneJoinGroupCall = {
+        call: groupCallInput,
+        join_as: this.appPeersManager.getInputPeerSelf(),
+        params
+      };
+
+      promise = this.apiManager.invokeApi('phone.joinGroupCall', request);
+      this.log(`[api] joinGroupCall id=${groupCallId}`, request);
     } else {
       const request: PhoneJoinGroupCallPresentation = {
         call: groupCallInput,
@@ -380,5 +390,95 @@ export class AppGroupCallsManager extends AppManager {
     }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
     });
+  }
+
+  public getGroupCallJoinAs(groupCallId: GroupCallId) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'phone.getGroupCallJoinAs',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(groupCallId as number)
+      }
+    });
+  }
+
+  public saveDefaultGroupCallJoinAs(groupCallId: GroupCallId, peerId: PeerId) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'phone.saveDefaultGroupCallJoinAs',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(groupCallId as number),
+        join_as: this.appPeersManager.getInputPeerById(peerId)
+      }
+    });
+  }
+
+  public getGroupCallStreamRtmpUrl(groupCallId: GroupCallId, revoke = false) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'phone.getGroupCallStreamRtmpUrl',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(groupCallId as number),
+        revoke
+      }
+    });
+  }
+
+  public async getGroupCallStreamChannels(groupCallId: GroupCallId) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'phone.getGroupCallStreamChannels',
+      params: {
+        call: this.getGroupCallInput(groupCallId)
+      }
+    });
+  }
+
+  public getRTMPVideoPreview(groupCall: GroupCall.groupCall, scale: number, timeMs: number, videoChannel: number) {
+    return this.getRTMPVideoPart(groupCall, scale, timeMs, videoChannel, 0);
+  }
+
+  public async getRTMPVideoPart(groupCall: GroupCall.groupCall, scale: number, timeMs: number, videoChannel: number | undefined, videoQuality: number | undefined): Promise<Uint8Array> {
+    const location: InputFileLocation.inputGroupCallStream = {
+      _: 'inputGroupCallStream',
+      flags: 1 << 0,
+      call: this.getGroupCallInput(groupCall.id),
+      scale,
+      time_ms: timeMs,
+      video_channel: videoChannel,
+      video_quality: videoQuality
+    };
+
+    const file = await this.apiManager.invokeApi('upload.getFile', {
+      location,
+      offset: 0,
+      limit: 512 * 1024
+    }, {
+      dcId: groupCall.stream_dc_id
+    });
+
+    if(file._ !== 'upload.file') {
+      throw new Error('Cannot get RTMP video stream part');
+    }
+
+    const bytes = file.bytes;
+    return bytes.subarray(32, bytes.length);
+  }
+
+  private async toggleGroupCallRecord(groupCallId: GroupCallId, method?: 'start' | 'stop', title?: string, recordVideo?: boolean, orientation?: 'landscape' | 'portrait') {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'phone.toggleGroupCallRecord',
+      params: {
+        call: this.getGroupCallInput(groupCallId),
+        start: method === 'start',
+        video: recordVideo,
+        title,
+        video_portrait: orientation === 'portrait'
+      }
+    });
+  }
+
+  public startGroupCallRecord(groupCallId: GroupCallId, title?: string, recordVideo?: boolean, orientation?: 'landscape' | 'portrait') {
+    return this.toggleGroupCallRecord(groupCallId, 'start', title, recordVideo, orientation);
+  }
+
+  public stopGroupCallRecord(groupCallId: GroupCallId) {
+    return this.toggleGroupCallRecord(groupCallId, 'stop');
   }
 }

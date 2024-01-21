@@ -52,6 +52,7 @@ export type PopupOptions = Partial<{
   buttons: Array<PopupButton>,
   title: boolean | LangPackKey | DocumentFragment | HTMLElement,
   floatingHeader: boolean
+  appendPopupTo: HTMLElement;
 }>;
 
 export interface PopupElementConstructable<T extends PopupElement = any> {
@@ -59,14 +60,6 @@ export interface PopupElementConstructable<T extends PopupElement = any> {
 }
 
 const DEFAULT_APPEND_TO = document.body;
-let appendPopupTo = DEFAULT_APPEND_TO;
-
-const onFullScreenChange = () => {
-  appendPopupTo = getFullScreenElement() || DEFAULT_APPEND_TO;
-  PopupElement.reAppend();
-};
-
-addFullScreenListener(DEFAULT_APPEND_TO, onFullScreenChange);
 
 type PopupListeners = {
   close: () => void,
@@ -109,9 +102,16 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   protected destroyed: boolean;
 
   protected night: boolean;
+  protected appendPopupTo = DEFAULT_APPEND_TO;
 
   constructor(className: string, options: PopupOptions = {}) {
     super(false);
+
+    addFullScreenListener(DEFAULT_APPEND_TO, this.onFullScreenChangeInternal(options.appendPopupTo));
+    if(typeof options.appendPopupTo !== 'undefined') {
+      this.appendPopupTo = options.appendPopupTo;
+    }
+
     this.element.classList.add('popup');
     this.element.className = 'popup' + (className ? ' ' + className : '');
     this.container.classList.add('popup-container', 'z-depth-1');
@@ -333,7 +333,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     appNavigationController.pushItem(this.navigationItem);
 
     blurActiveElement(); // * hide mobile keyboard
-    appendPopupTo.append(this.element);
+    this.appendPopupTo.append(this.element);
     void this.element.offsetWidth; // reflow
     this.element.classList.add('active');
 
@@ -406,7 +406,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     indexOfAndSplice(PopupElement.POPUPS, this);
 
     // ! calm
-    onFullScreenChange();
+    this.onFullScreenChangeInternal()();
 
     setTimeout(() => {
       this.element.remove();
@@ -422,7 +422,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
   public static reAppend() {
     this.POPUPS.forEach((popup) => {
-      const {element, container} = popup;
+      const {element, container, appendPopupTo} = popup;
       const parentElement = element.parentElement;
       if(parentElement && parentElement !== appendPopupTo && appendPopupTo !== container) {
         appendPopupTo.append(element);
@@ -438,6 +438,13 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     const popup = new ctor(...args);
     return popup;
   }
+
+  private onFullScreenChangeInternal(overrideElement?: HTMLElement) {
+    return () => {
+      this.appendPopupTo = getFullScreenElement() || overrideElement || DEFAULT_APPEND_TO;
+      PopupElement.reAppend();
+    }
+  };
 }
 
 export const addCancelButton = (buttons: PopupButton[]) => {

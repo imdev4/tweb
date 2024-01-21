@@ -12,35 +12,54 @@
 import GROUP_CALL_STATE from '../lib/calls/groupCallState';
 import LineBlobDrawable from './lineBlobDrawable';
 
+type ColorSchemeType = 'call' | 'stream';
+type ColorSchemeKeys = GROUP_CALL_STATE.MUTED_BY_ADMIN | GROUP_CALL_STATE.UNMUTED | GROUP_CALL_STATE.MUTED | GROUP_CALL_STATE.CONNECTING;
+type ColorSchemeStates = Record<ColorSchemeKeys, [number, string][]>;
+
+const COLOR_SCHEME: Record<ColorSchemeType, ColorSchemeStates> = {
+  call: {
+    [GROUP_CALL_STATE.MUTED_BY_ADMIN]: [[0, '#F05459'], [.4, '#766EE9'], [1, '#57A4FE']],
+    [GROUP_CALL_STATE.UNMUTED]: [[0, '#52CE5D'], [1, '#00B1C0']],
+    [GROUP_CALL_STATE.MUTED]: [[0, '#0976E3'], [1, '#2BCEFF']],
+    [GROUP_CALL_STATE.CONNECTING]: [[0, '#8599aa'], [1, '#8599aa']]
+  },
+  stream: {
+    [GROUP_CALL_STATE.MUTED_BY_ADMIN]: [[0, '#4588E3'], [.5, '#976FFF'], [1, '#E46ACE']],
+    [GROUP_CALL_STATE.UNMUTED]: [[0, '#4588E3'], [.5, '#976FFF'], [1, '#E46ACE']],
+    [GROUP_CALL_STATE.MUTED]: [[0, '#4588E3'], [.5, '#976FFF'], [1, '#E46ACE']],
+    [GROUP_CALL_STATE.CONNECTING]: [[0, '#8599aa'], [1, '#8599aa']]
+  }
+};
+
+function getColorScheme(stateId: GROUP_CALL_STATE, type: ColorSchemeType) {
+  const key = stateId as ColorSchemeKeys
+  if(key in COLOR_SCHEME[type]) {
+    return COLOR_SCHEME[type][key];
+  }
+
+  throw new Error('Unknown color scheme for Weaver');
+}
+
 export class WeavingState {
   public shader: (ctx: CanvasRenderingContext2D, left: number, top: number, right: number, bottom: number) => void;
 
-  constructor(public stateId: GROUP_CALL_STATE) {
-    this.createGradient(stateId);
+  constructor(public stateId: GROUP_CALL_STATE, public type: ColorSchemeType) {
+    this.createGradient(stateId, type);
   }
 
-  public createGradient(stateId: GROUP_CALL_STATE) {
+  public createGradient(stateId: GROUP_CALL_STATE, type: ColorSchemeType) {
     this.shader = (ctx, left, top, right, bottom) => {
-      ctx.fillStyle = WeavingState.getGradientFromType(ctx, stateId, left, top, right, bottom);
+      ctx.fillStyle = WeavingState.getGradientFromType(ctx, stateId, type, left, top, right, bottom);
     };
   }
 
   // Android colors
-  static getGradientFromType(ctx: CanvasRenderingContext2D, type: GROUP_CALL_STATE, x0: number, y0: number, x1: number, y1: number) {
+  static getGradientFromType(ctx: CanvasRenderingContext2D, stateId: GROUP_CALL_STATE, type: ColorSchemeType, x0: number, y0: number, x1: number, y1: number) {
     const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
-    if(type === GROUP_CALL_STATE.MUTED_BY_ADMIN) {
-      gradient.addColorStop(0, '#F05459');
-      gradient.addColorStop(.4, '#766EE9');
-      gradient.addColorStop(1, '#57A4FE');
-    } else if(type === GROUP_CALL_STATE.UNMUTED) {
-      gradient.addColorStop(0, '#52CE5D');
-      gradient.addColorStop(1, '#00B1C0');
-    } else if(type === GROUP_CALL_STATE.MUTED) {
-      gradient.addColorStop(0, '#0976E3');
-      gradient.addColorStop(1, '#2BCEFF');
-    } else if(type === GROUP_CALL_STATE.CONNECTING) {
-      gradient.addColorStop(0, '#8599aa');
-      gradient.addColorStop(1, '#8599aa');
+    const colors = getColorScheme(stateId, type);
+
+    for(const [offset, color] of colors) {
+      gradient.addColorStop(offset, color);
     }
 
     return gradient;
@@ -58,7 +77,7 @@ export default class TopbarWeave {
   private amplitude: number;
   private amplitude2: number;
 
-  private states: Map<GROUP_CALL_STATE, WeavingState>;
+  private states: Map<GROUP_CALL_STATE, WeavingState> = new Map();
   private previousState: WeavingState;
   private currentState: WeavingState;
   private progressToState: number;
@@ -93,15 +112,18 @@ export default class TopbarWeave {
     this.amplitude = 0.0;
     this.amplitude2 = 0.0;
 
-    this.states = new Map([
-      [GROUP_CALL_STATE.UNMUTED, new WeavingState(GROUP_CALL_STATE.UNMUTED)],
-      [GROUP_CALL_STATE.MUTED, new WeavingState(GROUP_CALL_STATE.MUTED)],
-      [GROUP_CALL_STATE.MUTED_BY_ADMIN, new WeavingState(GROUP_CALL_STATE.MUTED_BY_ADMIN)],
-      [GROUP_CALL_STATE.CONNECTING, new WeavingState(GROUP_CALL_STATE.CONNECTING)]
-    ]);
     this.previousState = null;
-    this.currentState = this.states.get(GROUP_CALL_STATE.CONNECTING);
+    this.currentState = new WeavingState(GROUP_CALL_STATE.CONNECTING, 'call');
     this.progressToState = 1.0;
+  }
+
+  public updateType(type: ColorSchemeType) {
+    this.states = new Map([
+      [GROUP_CALL_STATE.UNMUTED, new WeavingState(GROUP_CALL_STATE.UNMUTED, type)],
+      [GROUP_CALL_STATE.MUTED, new WeavingState(GROUP_CALL_STATE.MUTED, type)],
+      [GROUP_CALL_STATE.MUTED_BY_ADMIN, new WeavingState(GROUP_CALL_STATE.MUTED_BY_ADMIN, type)],
+      [GROUP_CALL_STATE.CONNECTING, new WeavingState(GROUP_CALL_STATE.CONNECTING, type)]
+    ]);
   }
 
   public componentDidMount() {

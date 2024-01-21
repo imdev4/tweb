@@ -17,6 +17,7 @@ import ChatContextMenu from './contextMenu';
 import ChatInput from './input';
 import ChatSelection from './selection';
 import ChatTopbar from './topbar';
+import StreamBar from './streamBar';
 import {NULL_PEER_ID, REPLIES_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import SetTransition from '../singleTransition';
 import AppPrivateSearchTab from '../sidebarRight/tabs/search';
@@ -63,6 +64,7 @@ export default class Chat extends EventListenerBase<{
   public backgroundEl: HTMLElement;
 
   public topbar: ChatTopbar;
+  public streamBar: StreamBar;
   public bubbles: ChatBubbles;
   public input: ChatInput;
   public selection: ChatSelection;
@@ -342,6 +344,7 @@ export default class Chat extends EventListenerBase<{
     // this.initPeerId = peerId;
 
     this.topbar = new ChatTopbar(this, appSidebarRight, this.managers);
+    this.streamBar = new StreamBar(this, this.managers, this.topbar);
     this.bubbles = new ChatBubbles(this, this.managers);
     this.input = new ChatInput(this, this.appImManager, this.managers, 'chat-input-main');
     this.contextMenu = new ChatContextMenu(this, this.managers);
@@ -363,6 +366,7 @@ export default class Chat extends EventListenerBase<{
     this.bubbles.attachContainerListeners();
 
     this.container.append(this.topbar.container, this.bubbles.container, this.input.chatInput);
+    this.streamBar.construct();
 
     this.bubbles.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
       if(this.peerId === migrateFrom) {

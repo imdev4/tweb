@@ -26,13 +26,18 @@ export default class GroupCallDescriptionElement {
 
   public update(instance: GroupCallInstance) {
     const {state} = instance;
+    const isRTMP = 'rtmp' in instance.connections;
 
     let key: LangPackKey, args: FormatterArguments;
     if(state === GROUP_CALL_STATE.CONNECTING) {
       key = 'VoiceChat.Status.Connecting';
     } else {
-      key = 'VoiceChat.Status.Members';
-      args = [(instance.groupCall as GroupCall.groupCall).participants_count];
+      if(isRTMP) {
+        key = 'VoiceChat.Chat.Livestream.Live';
+      } else {
+        key = 'VoiceChat.Status.Members';
+        args = [(instance.groupCall as GroupCall.groupCall).participants_count];
+      }
     }
 
     const {descriptionIntl} = this;

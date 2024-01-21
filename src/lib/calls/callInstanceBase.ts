@@ -124,7 +124,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
     this.elements.clear();
 
     // can have no connectionInstance but streamManager with input stream
-    this.streamManager.stop();
+    this.streamManager?.stop();
 
     super.cleanup();
   }

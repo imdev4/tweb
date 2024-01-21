@@ -16,6 +16,7 @@ import type {MessagesStorageKey} from '../appManagers/appMessagesManager';
 import type {AppAvatarsManager, PeerPhotoSize} from '../appManagers/appAvatarsManager';
 import rootScope from '../rootScope';
 import webpWorkerController from '../webp/webpWorkerController';
+import ffmpegWorkerController from '../ffmpeg/ffmpegWorkerController';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import sessionStorage from '../sessionStorage';
 import webPushApiManager from './webPushApiManager';
@@ -177,6 +178,18 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.addMultipleEventsListeners({
       convertWebp: ({fileName, bytes}) => {
         return webpWorkerController.convert(fileName, bytes);
+      },
+
+      decodeStream: ({fileName, bytes}) => {
+        return ffmpegWorkerController.decodeStream(fileName, bytes);
+      },
+
+      reencodeAudio: ({fileName, bytes}) => {
+        return ffmpegWorkerController.reencodeAudio(fileName, bytes);
+      },
+
+      encodeMjpeg: ({fileName, bytes}) => {
+        return ffmpegWorkerController.mjpegEncode(fileName, bytes);
       },
 
       convertOpus: ({fileName, bytes}) => {

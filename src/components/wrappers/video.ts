@@ -45,6 +45,7 @@ import Icon from '../icon';
 import LazyLoadQueue from '../lazyLoadQueue';
 import ProgressivePreloader from '../preloader';
 import wrapPhoto from './photo';
+import {nextRandomUint} from '../../helpers/random';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -580,8 +581,34 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
       getCacheContext();
 
-      const onError = (err: any) => {
-        console.error('video load error', video, err);
+      const onError = async(err: any) => {
+        // In case of MediaError, trying to re-encode video
+        if(err && (err.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED || err.code === MediaError.MEDIA_ERR_DECODE)) {
+          const reencodeDebug: Record<string, string | Uint8Array> = {};
+          try {
+            reencodeDebug.oldVideoUrl = cacheContext.url;
+            const currentVideo = await fetch(cacheContext.url);
+            const currentVideoBuffer = new Uint8Array(await currentVideo.arrayBuffer());
+            reencodeDebug.currentVideoBuffer = currentVideoBuffer;
+
+            const reencodedVideo = await managers.apiFileManager.reencodeAudio(currentVideoBuffer, `r-${nextRandomUint(32)}.mp4`);
+            reencodeDebug.reencodedVideo = currentVideoBuffer;
+            const blob = new Blob([reencodedVideo], {type: 'video/mp4'});
+            const newVideoUrl = URL.createObjectURL(blob);
+            reencodeDebug.newVideoUrl = newVideoUrl;
+
+            cacheContext.url = newVideoUrl;
+            video.src = newVideoUrl;
+            cacheContext = await managers.thumbsStorage.setCacheContextURL(doc, cacheContext.type, newVideoUrl, blob.size);
+            renderDeferred.resolve()
+            return;
+          } catch(e) {
+            console.error('Cannot reencode video', video, e, reencodeDebug);
+          }
+        } else {
+          console.error('Video load error', video, err);
+        }
+
         if(spanTime) {
           spanTime.classList.add('is-error');
           const previousIcon = spanTime.querySelector('.video-time-icon');

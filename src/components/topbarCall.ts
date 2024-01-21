@@ -29,6 +29,7 @@ import {AppManagers} from '../lib/appManagers/managers';
 import groupCallsController from '../lib/calls/groupCallsController';
 import StreamManager from '../lib/calls/streamManager';
 import callsController from '../lib/calls/callsController';
+import StreamPopup from './groupCall/streamPopup';
 
 function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
   switch(state) {
@@ -58,6 +59,7 @@ export default class TopbarCall {
 
   private instance: GroupCallInstance | any/* CallInstance */;
   private instanceListenerSetter: ListenerSetter;
+  private streamPopup: StreamPopup;
 
   constructor(
     private managers: AppManagers
@@ -118,13 +120,19 @@ export default class TopbarCall {
     this.instanceListenerSetter.removeAll();
   }
 
+  private isConstructed = false;
   private updateInstance(instance: TopbarCall['instance']) {
-    if(this.construct) {
-      this.construct();
-      this.construct = undefined;
+    const isRTMP = 'rtmp' in instance.connections;
+    const isChangingInstance = this.instance !== instance;
+
+    if(!this.isConstructed || isChangingInstance) {
+      if(this.container) {
+        this.container.parentElement.removeChild(this.container);
+      }
+      this.construct(isRTMP);
+      this.isConstructed = true;
     }
 
-    const isChangingInstance = this.instance !== instance;
     if(isChangingInstance) {
       this.clearCurrentInstance();
 
@@ -148,6 +156,7 @@ export default class TopbarCall {
 
     const {weave} = this;
 
+    weave.updateType(isRTMP ? 'stream' : 'call');
     weave.componentDidMount();
 
     const isClosed = state === GROUP_CALL_STATE.CLOSED;
@@ -190,7 +199,9 @@ export default class TopbarCall {
 
     this.setTitle(instance);
     this.setDescription(instance);
-    this.groupCallMicrophoneIconMini.setState(!isMuted);
+    if(!isRTMP) {
+      this.groupCallMicrophoneIconMini.setState(!isMuted);
+    }
   }
 
   private setDescription(instance: TopbarCall['instance']) {
@@ -205,60 +216,77 @@ export default class TopbarCall {
     }
   }
 
-  private construct() {
+  private construct(isRTMP: boolean) {
     const {listenerSetter} = this;
     const container = this.container = document.createElement('div');
     container.classList.add('sidebar-header', CLASS_NAME + '-container');
+    container.classList.toggle('small', isRTMP);
 
     const left = document.createElement('div');
     left.classList.add(CLASS_NAME + '-left');
 
-    const groupCallMicrophoneIconMini = this.groupCallMicrophoneIconMini = new GroupCallMicrophoneIconMini();
+    if(!isRTMP) {
+      const groupCallMicrophoneIconMini = this.groupCallMicrophoneIconMini = new GroupCallMicrophoneIconMini();
+      const mute = ButtonIcon();
+      mute.append(groupCallMicrophoneIconMini.container);
+      left.append(mute);
 
-    const mute = ButtonIcon();
-    mute.append(groupCallMicrophoneIconMini.container);
-    left.append(mute);
+      const throttledMuteClick = throttle(() => {
+        this.instance.toggleMuted();
+      }, 600, true);
 
-    const throttledMuteClick = throttle(() => {
-      this.instance.toggleMuted();
-    }, 600, true);
-
-    attachClickEvent(mute, (e) => {
-      cancelEvent(e);
-      throttledMuteClick();
-    }, {listenerSetter});
+      attachClickEvent(mute, (e) => {
+        cancelEvent(e);
+        throttledMuteClick();
+      }, {listenerSetter});
+    }
 
     const center = this.center = document.createElement('div');
     center.classList.add(CLASS_NAME + '-center');
 
     this.groupCallTitle = new GroupCallTitleElement(center);
     this.groupCallDescription = new GroupCallDescriptionElement(left);
-
     this.callDescription = new CallDescriptionElement(left);
 
     const right = document.createElement('div');
     right.classList.add(CLASS_NAME + '-right');
 
-    const end = ButtonIcon('endcall_filled');
-    right.append(end);
+    if(!isRTMP) {
+      const end = ButtonIcon('endcall_filled');
+      right.append(end);
 
-    attachClickEvent(end, (e) => {
-      cancelEvent(e);
+      attachClickEvent(end, (e) => {
+        cancelEvent(e);
 
-      const {instance} = this;
-      if(!instance) {
-        return;
-      }
+        const {instance} = this;
+        if(!instance) {
+          return;
+        }
 
-      if(instance instanceof GroupCallInstance) {
-        instance.hangUp();
-      } else {
-        instance.hangUp('phoneCallDiscardReasonHangup');
-      }
-    }, {listenerSetter});
+        if(instance instanceof GroupCallInstance) {
+          instance.hangUp();
+        } else {
+          instance.hangUp('phoneCallDiscardReasonHangup');
+        }
+      }, {listenerSetter});
+    }
 
     attachClickEvent(container, () => {
-      if(this.instance instanceof GroupCallInstance) {
+      if(isRTMP) {
+        if(!this.streamPopup || this.streamPopup.instance !== this.instance) {
+          this.streamPopup = new StreamPopup({
+            managers: this.managers
+          });
+
+          this.streamPopup.construct().then(() => {
+            setTimeout(() => {
+              this.streamPopup.show();
+            }, 0);
+          });
+        } else {
+          this.streamPopup.show()
+        }
+      } else if(this.instance instanceof GroupCallInstance) {
         if(PopupElement.getPopups(PopupGroupCall).length) {
           return;
         }
@@ -280,7 +308,12 @@ export default class TopbarCall {
     const weaveContainer = weave.render(CLASS_NAME + '-weave');
     container.prepend(weaveContainer);
 
-    document.getElementById('column-center').prepend(container);
+    const columnCenter = document.getElementById('column-center');
+    columnCenter.prepend(container);
+
+    const chatHeader = columnCenter.querySelector('.chats-container .sidebar-header');
+    chatHeader.classList.toggle('small', isRTMP);
+
     weave.componentDidMount();
   }
 }

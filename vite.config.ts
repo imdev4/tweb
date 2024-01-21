@@ -23,7 +23,11 @@ const handlebarsPlugin = handlebars({
 
 const serverOptions: ServerOptions = {
   // host: '192.168.92.78',
-  port: 8080
+  port: 8080,
+  headers: {
+    'Cross-Origin-Embedder-Policy': 'require-corp',
+    'Cross-Origin-Opener-Policy': 'same-origin'
+  }
 };
 
 const USE_SSL = false;
@@ -81,6 +85,9 @@ export default defineConfig({
     setupFiles: ['./src/tests/setup.ts']
   },
   server: serverOptions,
+  optimizeDeps: {
+    exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util']
+  },
   base: '',
   build: {
     target: 'es2020',

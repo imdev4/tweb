@@ -58,6 +58,7 @@ import createBadge from '../../helpers/createBadge';
 import PopupBoostsViaGifts from '../popups/boostsViaGifts';
 import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 import {ChatType} from './chat';
+import {PopupStreamCreate} from '../groupCall/streamCreatePopup';
 import AppBoostsTab from '../sidebarRight/tabs/boosts';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
@@ -191,7 +192,7 @@ export default class ChatTopbar {
     ].filter(Boolean));
 
     this.pushButtonToVerify(this.btnCall, this.verifyCallButton.bind(this, 'voice'));
-    this.pushButtonToVerify(this.btnGroupCall, this.verifyVideoChatButton);
+    this.pushButtonToVerify(this.btnGroupCall, this.verifyVideoChatButton.bind(this, 'broadcast'));
 
     this.chatInfoContainer.append(this.btnBack, this.chatInfo, this.chatUtils);
     this.container.append(this.chatInfoContainer);
@@ -310,7 +311,7 @@ export default class ChatTopbar {
       }));
 
       results.forEach(({button, result}) => {
-        button.element.classList.toggle('hide', !result);
+        button.element?.classList.toggle('hide', !result);
       });
     };
 
@@ -398,8 +399,8 @@ export default class ChatTopbar {
     }, {
       icon: 'videochat',
       text: 'PeerInfo.Action.LiveStream',
-      onClick: this.onJoinGroupCallClick,
-      verify: this.verifyVideoChatButton.bind(this, 'broadcast')
+      onClick: this.onLiveStreamOpen,
+      verify: this.verifyVideoChatButton.bind(this)
     }, {
       icon: 'videochat',
       text: 'PeerInfo.Action.VoiceChat',
@@ -624,6 +625,18 @@ export default class ChatTopbar {
   private onCallClick(type: CallType) {
     this.chat.appImManager.callUser(this.peerId.toUserId(), type);
   }
+
+  private onLiveStreamOpen = async() => {
+    const chat = apiManagerProxy.getChat(this.peerId.toChatId());
+    if(hasRights(chat, 'manage_call')) {
+      PopupElement.createPopup(PopupStreamCreate, {
+        managers: this.managers,
+        peerId: this.peerId
+      });
+    } else {
+      this.onJoinGroupCallClick();
+    }
+  };
 
   private onJoinGroupCallClick = () => {
     this.chat.appImManager.joinGroupCall(this.peerId);

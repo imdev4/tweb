@@ -50,11 +50,17 @@ body.is-calling {
       &, 
       &-call-container {
         transform: translateY(var(--topbar-call-height));
+        &.small {
+          transform: translateY(var(--topbar-call-height-small)) !important;
+        }
       }
     }
 
     &:not(.animating) {
       --topbar-floating-call-height: var(--topbar-call-height);
+      &.small {
+        --topbar-floating-call-height: var(--topbar-call-height-small) !important;
+      }
     }
   }
 }
@@ -351,6 +357,11 @@ body.is-right-column-shown {
       z-index: 2;
       cursor: pointer !important;
 
+      &.small {
+        height: var(--topbar-call-height-small) !important;
+        top: calc(var(--topbar-call-height-small) * -1) !important;
+      }
+
       body:not(.has-chat) & {
         background: none !important;
       }
@@ -370,6 +381,11 @@ body.is-right-column-shown {
       .peer-title {
         font-weight: var(--font-weight-bold);
         white-space: nowrap;
+      }
+
+      .stream-watchers {
+        opacity: 0.6;
+        margin-left: 0.5rem;
       }
 
       &:not(.is-call) {

@@ -1415,9 +1415,9 @@ export class AppImManager extends EventListenerBase<{
     }
   }
 
-  public async joinGroupCall(peerId: PeerId, groupCallId?: GroupCallId) {
+  public async joinGroupCall(peerId: PeerId, groupCallId?: GroupCallId, scheduledDate?: number, rtmpStream?: boolean) {
     const chatId = peerId.toChatId();
-    const hasRights = this.managers.appChatsManager.hasRights(chatId, 'manage_call');
+    const hasRights = await this.managers.appChatsManager.hasRights(chatId, 'manage_call');
     const next = async() => {
       const chatFull = await this.managers.appProfileManager.getChatFull(chatId);
       let call: MyGroupCall;
@@ -1426,12 +1426,14 @@ export class AppImManager extends EventListenerBase<{
           return;
         }
 
-        call = await this.managers.appGroupCallsManager.createGroupCall(chatId);
+        call = await this.managers.appGroupCallsManager.createGroupCall(chatId, scheduledDate, undefined, rtmpStream);
       } else {
         call = chatFull.call;
       }
 
-      groupCallsController.joinGroupCall(chatId, call.id, true, false);
+      if(typeof scheduledDate !== 'number') {
+        groupCallsController.joinGroupCall(chatId, call.id, true, false);
+      }
     };
 
     if(groupCallId) {

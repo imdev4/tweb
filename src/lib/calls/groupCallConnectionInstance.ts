@@ -19,6 +19,7 @@ import SDP from './sdp';
 import SDPMediaSection from './sdp/mediaSection';
 import {WebRTCLineType} from './sdpBuilder';
 import {UpdateGroupCallConnectionData} from './types';
+import {RTMPConnection} from './rtmp';
 
 export default class GroupCallConnectionInstance extends CallConnectionInstanceBase {
   private groupCall: GroupCallInstance;
@@ -31,11 +32,14 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     rejoin?: boolean
   } | {
     type: Extract<GroupCallConnectionType, 'presentation'>,
+  } | {
+    type: Extract<GroupCallConnectionType, 'rtmp'>,
   };
 
   private updateConstraintsInterval: number;
   public negotiateThrottled: () => void;
-
+  public isRTMP = false;
+  public connectionRTMP: RTMPConnection;
   private managers: AppManagers;
 
   constructor(options: CallConnectionInstanceOptions & {
@@ -113,40 +117,54 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     }); */
   }
 
-  private async invokeJoinGroupCall(localSdp: SDP, mainChannels: SDPMediaSection[], options: GroupCallConnectionInstance['options']) {
+  private async invokeJoinGroupCall(localSdp: SDP | null, mainChannels: SDPMediaSection[] | null, options: GroupCallConnectionInstance['options']) {
     const {groupCall, description} = this;
     const groupCallId = groupCall.id;
 
-    const processedChannels = mainChannels.map((section) => {
+    const processedChannels = mainChannels ? mainChannels.map((section) => {
       const processed = processMediaSection(localSdp, section);
 
       this.sources[processed.entry.type as 'video' | 'audio'] = processed.entry;
 
       return processed;
-    });
+    }) : [];
 
     const audioChannel = processedChannels.find((channel) => channel.media.mediaType === 'audio');
     const videoChannel = processedChannels.find((channel) => channel.media.mediaType === 'video');
     let {source, params} = audioChannel || {};
     const useChannel = videoChannel || audioChannel;
 
-    const channels: {[type in WebRTCLineType]?: typeof audioChannel} = {
-      audio: audioChannel,
-      video: videoChannel
-    };
 
-    description.entries.forEach((entry) => {
-      if(entry.direction === 'sendonly') {
-        const channel = channels[entry.type];
-        if(!channel) return;
+    if(!this.isRTMP) {
+      const channels: { [type in WebRTCLineType]?: typeof audioChannel } = {
+        audio: audioChannel,
+        video: videoChannel
+      };
 
-        description.setEntrySource(entry, channel.sourceGroups || channel.source);
-        description.setEntryPeerId(entry, rootScope.myId);
-      }
-    });
+      description.entries.forEach((entry) => {
+        if(entry.direction === 'sendonly') {
+          const channel = channels[entry.type];
+          if(!channel) return;
 
-    // overwrite ssrc with audio in video params
-    if(params !== useChannel.params) {
+          description.setEntrySource(entry, channel.sourceGroups || channel.source);
+          description.setEntryPeerId(entry, rootScope.myId);
+        }
+      });
+    }
+
+    if(this.isRTMP) {
+      params = {
+        _: 'dataJSON',
+        data: JSON.stringify({
+          'fingerprints': [],
+          'pwd': '',
+          'ssrc': 1,
+          'ssrc-groups': [],
+          'ufrag': ''
+        })
+      };
+    } else if(params !== useChannel.params) {
+      // overwrite ssrc with audio in video params
       const data: JoinGroupCallJsonPayload = JSON.parse(useChannel.params.data);
       // data.ssrc = source || data.ssrc - 1; // audio channel can be missed in screensharing
       if(source) data.ssrc = source;
@@ -161,15 +179,22 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
 
     const data: UpdateGroupCallConnectionData = JSON.parse(update.params.data);
 
-    data.audio = data.audio || groupCall.connections.main.description.audio;
-    description.setData(data);
-    filterServerCodecs(mainChannels, data);
+    if(!this.isRTMP) {
+      data.audio = data.audio || groupCall.connections.main.description.audio;
+      description.setData(data);
+      filterServerCodecs(mainChannels, data);
+    }
 
     return data;
   }
 
   protected async negotiateInternal() {
     const {connection, description} = this;
+    if(this.isRTMP) {
+      await this.invokeJoinGroupCall(null, null, this.options);
+      return;
+    }
+
     const isNewConnection = connection.iceConnectionState === 'new' && !description.getEntryByMid('0').source;
     const log = this.log.bindPrefix('startNegotiation');
     log('start');
@@ -356,5 +381,33 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
 
     this.streamManager.addStream(stream, 'input');
     this.appendStreamToConference(); // replace sender track
+  }
+
+  public setIsRTMP(value: boolean) {
+    this.isRTMP = value;
+  }
+
+  public closeConnection() {
+    if(this.isRTMP) {
+      this.connectionRTMP.closeConnection();
+    } else {
+      super.closeConnection()
+    }
+  }
+
+  public async createRTMPConnection(options: Pick<ConstructorParameters<typeof RTMPConnection>[0], 'onRejoinRequest'>) {
+    this.log('RTMP connection for call', this.groupCall.groupCall)
+    if(this.groupCall.groupCall._ !== 'groupCall') {
+      throw new Error('Wrong GroupCall')
+    }
+
+    // RTMP instance creation
+    this.connectionRTMP = new RTMPConnection({
+      managers: this.managers,
+      call: this.groupCall.groupCall,
+      onRejoinRequest: options.onRejoinRequest
+    });
+
+    return this.connectionRTMP;
   }
 }

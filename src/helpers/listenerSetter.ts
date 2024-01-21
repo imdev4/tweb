@@ -49,6 +49,10 @@ export default class ListenerSetter {
   } */
 
   public addManual(listener: Listener) {
+    if(!listener.element) {
+      return;
+    }
+
     // @ts-ignore
     listener.element.addEventListener(listener.event, listener.callback, listener.options);
 

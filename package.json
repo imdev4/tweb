@@ -26,6 +26,8 @@
     "@cryptography/aes": "^0.1.1",
     "@cryptography/sha1": "^0.2.0",
     "@cryptography/sha256": "^0.2.0",
+    "@ffmpeg/ffmpeg": "^0.12.10",
+    "@ffmpeg/util": "^0.12.1",
     "@peculiar/webcrypto": "^1.4.3",
     "@solid-primitives/refs": "^1.0.5",
     "@solid-primitives/transition-group": "^1.0.3",

@@ -433,6 +433,21 @@ export class ApiFileManager extends AppManager {
     return instance.invoke('convertWebp', {fileName, bytes});
   };
 
+  public decodeStream = (bytes: Uint8Array, fileName: string) => {
+    const instance = MTProtoMessagePort.getInstance<false>();
+    return instance.invoke('decodeStream', {fileName, bytes});
+  };
+
+  public reencodeAudio = (bytes: Uint8Array, fileName: string) => {
+    const instance = MTProtoMessagePort.getInstance<false>();
+    return instance.invoke('reencodeAudio', {fileName, bytes});
+  };
+
+  public encodeMjpeg = (bytes: Uint8Array, fileName: string) => {
+    const instance = MTProtoMessagePort.getInstance<false>();
+    return instance.invoke('encodeMjpeg', {fileName, bytes});
+  };
+
   private convertOpus = (bytes: Uint8Array, fileName: string) => {
     const instance = MTProtoMessagePort.getInstance<false>();
     return instance.invoke('convertOpus', {fileName, bytes});

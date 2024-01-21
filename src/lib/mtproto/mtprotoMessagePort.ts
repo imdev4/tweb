@@ -34,6 +34,9 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   createProxyWorkerURLs: (payload: {originalUrl: string, blob: Blob}) => string[],
 } & MTProtoBroadcastEvent, {
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
+  decodeStream: (payload: {fileName:string, bytes: Uint8Array}) => Promise<Uint8Array>,
+  reencodeAudio: (payload: {fileName:string, bytes: Uint8Array}) => Promise<Uint8Array>,
+  encodeMjpeg: (payload: {fileName:string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   localStorageProxy: (payload: LocalStorageProxyTask['payload']) => Promise<any>,
   mirror: (payload: MirrorTaskPayload) => void,

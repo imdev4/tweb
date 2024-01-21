@@ -130,11 +130,16 @@ export class GroupCallsController extends EventListenerBase<{
     });
   }
 
+  private async rejoin() {
+    const call = this.currentGroupCall;
+    return this.joinGroupCall(call.chatId, call.groupCall.id);
+  }
+
   private async joinGroupCallInternal(chatId: ChatId, groupCallId: GroupCallId, streamManager: StreamManager, muted: boolean, rejoin = false, joinVideo?: boolean) {
     const log = this.log.bindPrefix('joinGroupCallInternal');
     log('start', groupCallId);
 
-    const type: GroupCallConnectionType = 'main';
+    let type: GroupCallConnectionType = 'main';
 
     let {currentGroupCall} = this;
     if(currentGroupCall && rejoin) {
@@ -162,6 +167,11 @@ export class GroupCallsController extends EventListenerBase<{
 
       currentGroupCall.groupCall = await this.managers.appGroupCallsManager.getGroupCallFull(groupCallId);
 
+      const isRTMP = currentGroupCall.groupCall._ === 'groupCall' && currentGroupCall.groupCall.pFlags.rtmp_stream;
+      if(isRTMP) {
+        type = 'rtmp';
+      }
+
       const connectionInstance = currentGroupCall.createConnectionInstance({
         streamManager,
         type,
@@ -173,6 +183,38 @@ export class GroupCallsController extends EventListenerBase<{
         }
       });
 
+      // RTMP stream
+      if(isRTMP) {
+        connectionInstance.setIsRTMP(true);
+        await connectionInstance.negotiate();
+        const connectionRTMP = await connectionInstance.createRTMPConnection({
+          onRejoinRequest: () => this.rejoin()
+        });
+
+        connectionRTMP.addEventListener('statechange', state => {
+          currentGroupCall.dispatchEvent('state', currentGroupCall.state);
+
+          if(state === GROUP_CALL_STATE.CONNECTING) {
+            this.startConnectingSound();
+          } else {
+            this.stopConnectingSound();
+
+            if(!currentGroupCall.joined) {
+              currentGroupCall.joined = true;
+              this.audioAsset.playSound('group_call_start.mp3');
+              this.managers.appGroupCallsManager.getGroupCallParticipants(groupCallId);
+            }
+          }
+        })
+
+        this.setCurrentGroupCall(currentGroupCall);
+        log('set currentGroupCall', groupCallId, currentGroupCall);
+        this.startConnectingSound();
+
+        return;
+      }
+
+      // Group call
       const connection = connectionInstance.createPeerConnection();
       connection.addEventListener('negotiationneeded', () => {
         connectionInstance.negotiate();
