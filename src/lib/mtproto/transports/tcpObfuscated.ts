@@ -90,7 +90,6 @@ export default class TcpObfuscated implements MTTransport {
 
   private onMessage = async(buffer: ArrayBuffer) => {
     // networkStats.addReceived(this.dcId, buffer.byteLength);
-
     const time = Date.now();
     let data = await this.obfuscation.decode(new Uint8Array(buffer));
     data = this.codec.readPacket(data);

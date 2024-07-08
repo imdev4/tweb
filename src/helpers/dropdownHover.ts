@@ -31,6 +31,7 @@ export default class DropdownHover extends EventListenerBase<{
 }> {
   protected element: HTMLElement;
   protected forceClose: boolean;
+  protected noClose: boolean;
   protected inited: boolean;
   protected ignoreMouseOut: Set<IgnoreMouseOutType>;
   protected ignoreButtons: Set<HTMLElement>;
@@ -42,6 +43,7 @@ export default class DropdownHover extends EventListenerBase<{
   constructor(options: {
     element: DropdownHover['element'],
     ignoreOutClickClassName?: string
+    noClose?: boolean
   }) {
     super(false);
     safeAssign(this, options);
@@ -161,6 +163,10 @@ export default class DropdownHover extends EventListenerBase<{
   }
 
   public toggle = async(enable?: boolean) => {
+    if(this.noClose && !enable) {
+      return;
+    }
+
     // if(!this.element) return;
     const willBeActive = (!!this.element.style.display && enable === undefined) || enable;
     if(this.init) {

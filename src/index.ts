@@ -40,6 +40,7 @@ import {IS_OVERLAY_SCROLL_SUPPORTED, USE_CUSTOM_SCROLL, USE_NATIVE_SCROLL} from 
 import IMAGE_MIME_TYPES_SUPPORTED, {IMAGE_MIME_TYPES_SUPPORTED_PROMISE} from './environment/imageMimeTypesSupport';
 import MEDIA_MIME_TYPES_SUPPORTED from './environment/mediaMimeTypesSupport';
 // import appNavigationController from './components/appNavigationController';
+import {appAccountsManager} from './lib/appManagers/appAccountsManager';
 
 IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   mimeTypes.forEach((mimeType) => {
@@ -67,7 +68,8 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
         localStorage.setItem('kz_version', 'K');
       }
     }
-  } catch(err) {}
+  } catch(err) { }
+
 
   toggleAttributePolyfill();
 
@@ -357,7 +359,22 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
     document.documentElement.dir = 'ltr';
   }
 
+  // Trying to authorize another account on logout
   let authState = stateResult.state.authState;
+  if(authState._ !== 'authStateSignedIn') {
+    const params = new URLSearchParams(window.location.search);
+    const accounts = await appAccountsManager.getAccounts();
+    for(const account of accounts) {
+      if(params.has('acc') && parseInt(params.get('acc')) === account.id) {
+        await appAccountsManager.removeAccount(account.id);
+      } else if(await appAccountsManager.changeAccount(account.id)) {
+        const updatedUrl = new URL(window.location.toString());
+        updatedUrl.searchParams.set('acc', String(account.id));
+        window.location.replace(updatedUrl.toString());
+        return;
+      }
+    }
+  }
 
   const hash = location.hash;
   const splitted = hash.split('?');

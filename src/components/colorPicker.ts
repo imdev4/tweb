@@ -2,6 +2,7 @@ import {ColorHsla, ColorRgba, hexaToHsla, hslaToRgba, rgbaToHexa as rgbaToHexa, 
 import attachGrabListeners from '../helpers/dom/attachGrabListeners';
 import clamp from '../helpers/number/clamp';
 import InputField, {InputState} from './inputField';
+import safeAssign from '../helpers/object/safeAssign';
 
 export type ColorPickerColor = {
   hsl: string;
@@ -12,6 +13,15 @@ export type ColorPickerColor = {
   hexa: string;
   rgbaArray: ColorRgba;
 };
+
+type ColorPickerOptions = {
+  linesHeight?: number;
+  linesWidth?: number;
+  paletteHeight?: number;
+  paletteWidth?: number;
+  circleTop?: number;
+  onChange?: (color: ReturnType<ColorPicker['getCurrentColor']>) => void
+}
 
 export default class ColorPicker {
   private static BASE_CLASS = 'color-picker';
@@ -37,13 +47,20 @@ export default class ColorPicker {
   private hexInputField: InputField;
   private rgbInputField: InputField;
   public onChange: (color: ReturnType<ColorPicker['getCurrentColor']>) => void;
+  private linesHeight = 24;
+  private linesWidth = 380;
+  private paletteHeight = 198;
+  private paletteWidth = 380;
+  private circleTop = 13;
 
-  constructor() {
+  constructor(options: ColorPickerOptions = {}) {
+    safeAssign(this, options);
+
     this.container = document.createElement('div');
     this.container.classList.add(ColorPicker.BASE_CLASS);
 
     const html = `
-      <svg class="${ColorPicker.BASE_CLASS + '-box'}" viewBox="0 0 380 198">
+      <svg class="${ColorPicker.BASE_CLASS + '-box'}" viewBox="0 0 ${this.paletteWidth} ${this.paletteHeight}">
         <defs>
           <linearGradient id="color-picker-saturation" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stop-color="#fff"></stop>
@@ -58,13 +75,13 @@ export default class ColorPicker {
             <rect x="0" y="0" width="100%" height="100%" fill="url(#color-picker-brightness)"></rect>
           </pattern>
         </defs>
-        <rect rx="10" ry="10" x="0" y="0" width="380" height="198" fill="url(#color-picker-pattern)"></rect>
+        <rect rx="10" ry="10" x="0" y="0" width="${this.paletteWidth}" height="${this.paletteHeight}" fill="url(#color-picker-pattern)"></rect>
         <svg class="${ColorPicker.BASE_CLASS + '-dragger'} ${ColorPicker.BASE_CLASS + '-box-dragger'}" x="0" y="0">
           <circle r="11" fill="inherit" stroke="#fff" stroke-width="2"></circle>
         </svg>
       </svg>
       <div class="${ColorPicker.BASE_CLASS + '-sliders'}">
-        <svg class="${ColorPicker.BASE_CLASS + '-color-slider'}" viewBox="0 0 380 24">
+        <svg class="${ColorPicker.BASE_CLASS + '-color-slider'}" viewBox="0 0 ${this.linesWidth} ${this.linesHeight}">
           <defs>
             <linearGradient id="hue" x1="100%" y1="0%" x2="0%" y2="0%">
               <stop offset="0%" stop-color="#f00"></stop>
@@ -76,8 +93,8 @@ export default class ColorPicker {
               <stop offset="100%" stop-color="#f00"></stop>
             </linearGradient>
           </defs>
-          <rect rx="4" ry="4" x="0" y="9" width="380" height="8" fill="url(#hue)"></rect>
-          <svg class="${ColorPicker.BASE_CLASS + '-dragger'} ${ColorPicker.BASE_CLASS + '-color-slider-dragger'}" x="0" y="13">
+          <rect rx="${(this.linesHeight / 3) / 2}" ry="${(this.linesHeight / 3) / 2}" x="0" y="9" width="${this.linesWidth}" height="${this.linesHeight / 3}" fill="url(#hue)"></rect>
+          <svg class="${ColorPicker.BASE_CLASS + '-dragger'} ${ColorPicker.BASE_CLASS + '-color-slider-dragger'}" x="0" y="${this.circleTop}">
             <circle r="11" fill="inherit" stroke="#fff" stroke-width="2"></circle>
           </svg>
         </svg>

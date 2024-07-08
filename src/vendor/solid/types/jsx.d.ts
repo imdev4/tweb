@@ -875,6 +875,8 @@ export namespace JSX {
     srcdoc?: string;
     width?: number | string;
     referrerPolicy?: HTMLReferrerPolicy;
+    credentialless?: boolean;
+    allowtransparency?: boolean;
   }
   interface ImgHTMLAttributes<T> extends HTMLAttributes<T> {
     alt?: string;

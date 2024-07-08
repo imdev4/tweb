@@ -137,6 +137,7 @@ export type BroadcastEvents = {
   'webpage_updated': {id: WebPage.webPage['id'], msgs: {peerId: PeerId, mid: number, isScheduled: boolean}[]},
 
   'connection_status_change': ConnectionStatusChange,
+  'background_account_update': { accountId: number; messages: Message[]; unread_count: number },
   'settings_updated': {key: string, value: any, settings: State['settings']},
   'draft_updated': {peerId: PeerId, threadId: number, draft: MyDraftMessage | undefined, force?: boolean},
 

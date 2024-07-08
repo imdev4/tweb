@@ -28,6 +28,7 @@ import rootScope from '../lib/rootScope';
 import TelInputField from '../components/telInputField';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import CountryInputField from '../components/countryInputField';
+import {appAccountsManager} from '../lib/appManagers/appAccountsManager';
 
 // import _countries from '../countries_pretty.json';
 let btnNext: HTMLButtonElement = null, btnQr: HTMLButtonElement;
@@ -168,9 +169,16 @@ const onFirstMount = () => {
         if(authorization._ === 'auth.authorization') {
           await rootScope.managers.apiManager.setUser(authorization.user);
 
-          import('./pageIm').then((m) => {
-            m.default.mount();
-          });
+          if(appAccountsManager.isAddingAccountMode()) {
+            await appAccountsManager.cacheCurrent();
+            await appAccountsManager.exitAddingAccountMode();
+            return;
+          } else {
+            import('./pageIm').then(async(m) => {
+              m.default.mount();
+              await appAccountsManager.cacheCurrent();
+            });
+          }
         }
       }
 

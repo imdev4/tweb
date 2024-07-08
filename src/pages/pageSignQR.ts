@@ -18,10 +18,11 @@ import fixBase64String from '../helpers/fixBase64String';
 import bytesCmp from '../helpers/bytes/bytesCmp';
 import bytesToBase64 from '../helpers/bytes/bytesToBase64';
 import textToSvgURL from '../helpers/textToSvgURL';
+import {appAccountsManager} from '../lib/appManagers/appAccountsManager';
 
 const FETCH_INTERVAL = 3;
 
-const onFirstMount = async() => {
+const onFirstMount = async(except_ids: number[] = []) => {
   const pageElement = page.pageEl;
   const imageDiv = pageElement.querySelector('.auth-image') as HTMLDivElement;
 
@@ -63,7 +64,6 @@ const onFirstMount = async() => {
   let stop = false;
   rootScope.addEventListener('user_auth', () => {
     stop = true;
-    cachedPromise = null;
   }, {once: true});
 
   const options: {dcId?: DcId, ignoreErrors: true} = {ignoreErrors: true};
@@ -74,7 +74,7 @@ const onFirstMount = async() => {
       let loginToken = await rootScope.managers.apiManager.invokeApi('auth.exportLoginToken', {
         api_id: App.id,
         api_hash: App.hash,
-        except_ids: []
+        except_ids
       }, {ignoreErrors: true});
 
       if(loginToken._ === 'auth.loginTokenMigrateTo') {
@@ -92,7 +92,16 @@ const onFirstMount = async() => {
       if(loginToken._ === 'auth.loginTokenSuccess') {
         const authorization = loginToken.authorization as any as AuthAuthorization.authAuthorization;
         await rootScope.managers.apiManager.setUser(authorization.user);
-        import('./pageIm').then((m) => m.default.mount());
+        if(appAccountsManager.isAddingAccountMode()) {
+          await appAccountsManager.cacheCurrent();
+          await appAccountsManager.exitAddingAccountMode();
+          return;
+        } else {
+          import('./pageIm').then(async(m) => {
+            m.default.mount();
+            await appAccountsManager.cacheCurrent();
+          });
+        }
         return true;
       }
 
@@ -195,7 +204,6 @@ const onFirstMount = async() => {
           (err as ApiError).handled = true;
           import('./pagePassword').then((m) => m.default.mount());
           stop = true;
-          cachedPromise = null;
           break;
         default:
           console.error('pageSignQR: default error:', err);
@@ -230,10 +238,10 @@ const onFirstMount = async() => {
 let cachedPromise: Promise<() => Promise<void>>;
 const page = new Page('page-signQR', true, () => {
   return cachedPromise;
-}, () => {
-  // console.log('onMount');
-  if(!cachedPromise) cachedPromise = onFirstMount();
+}, (except_ids?: number[]) => {
+  if(!cachedPromise) cachedPromise = onFirstMount(except_ids);
   cachedPromise.then((func) => {
+    cachedPromise = null;
     func();
   });
 

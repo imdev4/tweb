@@ -7,7 +7,7 @@
 import type {Database} from '.';
 import type {IDBIndex} from '../../lib/files/idb';
 
-const DATABASE_STATE: Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'> = {
+const DATABASE_STATE: Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs' | 'accounts'> = {
   name: 'tweb',
   version: 7,
   stores: [{
@@ -34,6 +34,8 @@ const DATABASE_STATE: Database<'session' | 'stickerSets' | 'users' | 'chats' | '
     // ]
   }, {
     name: 'messages'
+  }, {
+    name: 'accounts'
   }]
 };
 

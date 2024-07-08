@@ -54,6 +54,9 @@ import {ChatType} from '../chat/chat';
 import pause from '../../helpers/schedulers/pause';
 import {Accessor, createRoot, createSignal, Setter} from 'solid-js';
 import SelectedEffect from '../chat/selectedEffect';
+import ButtonIcon from '../buttonIcon';
+import Icon from '../icon';
+import {MediaEditorPopup} from './mediaEditor';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -508,9 +511,12 @@ export default class PopupNewMedia extends PopupElement {
     return media.length > 1 || files.length > 1 || audio.length > 1;
   }
 
-  private canToggleSpoilers(toggle: boolean, single: boolean) {
+  private canToggleSpoilers(toggle: boolean, single: boolean, currentState?: boolean) {
     let good = this.willAttach.type === 'media' && this.hasAnyMedia();
     if(single && good) {
+      if(typeof currentState === 'boolean') {
+        return toggle === !currentState;
+      }
       good = this.files.length === 1;
     }
 
@@ -575,19 +581,6 @@ export default class PopupNewMedia extends PopupElement {
       this.attachFiles();
     }
   }
-
-  private onKeyDown = (e: KeyboardEvent) => {
-    const target = e.target as HTMLElement;
-    const {input} = this.messageInputField;
-    if(target !== input) {
-      if(target.tagName === 'INPUT' || target.isContentEditable) {
-        return;
-      }
-
-      input.focus();
-      placeCaretAtEnd(input);
-    }
-  };
 
   private async send(force = false) {
     let {value: caption, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
@@ -797,6 +790,51 @@ export default class PopupNewMedia extends PopupElement {
     } else {
       const img = new Image();
       itemDiv.append(img);
+
+      // Image actions
+      const imageActionsContainer = document.createElement('div');
+      imageActionsContainer.classList.add('popup-item-media-actions');
+
+      // Edit button
+      const EditButton = ButtonIcon('enhance', {
+        noRipple: true
+      });
+      EditButton.addEventListener('click', () => {
+        PopupElement.createPopup(MediaEditorPopup, {
+          managers: this.managers,
+          image: img,
+          onDone: (newData) => this.onEnhance(params, newData)
+        });
+      });
+      imageActionsContainer.append(EditButton);
+
+      // Spoiler button
+      const SpoilerButton = ButtonIcon('mediaspoiler', {
+        noRipple: true
+      });
+      imageActionsContainer.append(SpoilerButton);
+      SpoilerButton.addEventListener('click', () => {
+        if(this.canToggleSpoilers(!params.mediaSpoiler, true, !!params.mediaSpoiler)) {
+          if(params.mediaSpoiler) {
+            SpoilerButton.innerHTML = Icon('mediaspoiler').outerHTML;
+            this.removeMediaSpoiler(params);
+          } else {
+            SpoilerButton.innerHTML = Icon('mediaspoileroff').outerHTML;
+            this.applyMediaSpoiler(params);
+          }
+        }
+      });
+
+      // Remove button
+      const RemoveButton = ButtonIcon('delete', {
+        noRipple: true
+      });
+      imageActionsContainer.append(RemoveButton);
+      itemDiv.append(imageActionsContainer);
+      RemoveButton.addEventListener('click', () => {
+        this.removeFile(params);
+      });
+
       const url = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
 
       await renderImageFromUrlPromise(img, url);
@@ -826,6 +864,51 @@ export default class PopupNewMedia extends PopupElement {
           })
         ]).then(() => {});
       }
+    }
+  }
+
+  private onEnhance(params: SendFileParams, value: HTMLCanvasElement | Blob) {
+    if(value instanceof HTMLCanvasElement) {
+      value.toBlob((blob) => {
+        const newFile = new File([blob], params.file.name, {
+          type: params.file.type
+        });
+
+        const fileIndex = this.files.findIndex(file => file === params.file);
+        if(fileIndex < 0) {
+          throw new Error('Cannot update file');
+        }
+
+        this.files[fileIndex] = newFile;
+        this.attachFiles();
+      }, params.file.type);
+    } else {
+      const newFile = new File([value], params.file.name, {
+        type: params.file.type
+      });
+
+      const fileIndex = this.files.findIndex(file => file === params.file);
+      if(fileIndex < 0) {
+        throw new Error('Cannot update file');
+      }
+
+      this.files[fileIndex] = newFile;
+      this.attachFiles();
+    }
+  }
+
+  private removeFile(params: SendFileParams) {
+    const itemIndex = this.willAttach.sendFileDetails.findIndex(item => item.itemDiv === params.itemDiv);
+    if(itemIndex < 0) {
+      throw new Error('Cannot remove file')
+    }
+
+    this.files.splice(itemIndex, 1);
+    this.willAttach.sendFileDetails.splice(itemIndex, 1);
+    if(this.willAttach.sendFileDetails.length === 0) {
+      this.hide();
+    } else {
+      this.attachFiles();
     }
   }
 
@@ -955,7 +1038,6 @@ export default class PopupNewMedia extends PopupElement {
       return;
     }
 
-    this.listenerSetter.add(document.body)('keydown', this.onKeyDown);
     animationIntersector.setOnlyOnePlayableGroup(this.animationGroup);
     this.addEventListener('close', () => {
       animationIntersector.setOnlyOnePlayableGroup();

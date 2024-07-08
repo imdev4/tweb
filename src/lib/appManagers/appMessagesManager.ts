@@ -2060,13 +2060,13 @@ export class AppMessagesManager extends AppManager {
     if(this.appPeersManager.isAnyChat(peerId) && (this.appPeersManager.isBroadcast(peerId) || this.isAnonymousSending(peerId))) {
       return undefined;
     } else {
-      return this.appPeersManager.getOutputPeer(this.appUsersManager.getSelf().id.toPeerId());
+      return this.appPeersManager.getOutputPeer(this.appUsersManager.getSelf()?.id.toPeerId());
     }
   }
 
   private generateFlags(peerId: PeerId) {
     const pFlags: Message.message['pFlags'] = {};
-    const fromId = this.appUsersManager.getSelf().id;
+    const fromId = this.appUsersManager.getSelf()?.id;
     if(peerId !== fromId) {
       pFlags.out = true;
 
@@ -3691,7 +3691,7 @@ export class AppMessagesManager extends AppManager {
     isOutgoing: true,
     // isNew: boolean, // * new - from update
   }> = {}) {
-    if(!message || message._ === 'messageEmpty') {
+    if(!message || message._ === 'messageEmpty' || !message.id) {
       return;
     }
 
@@ -3848,7 +3848,7 @@ export class AppMessagesManager extends AppManager {
 
     if(!isMessage && message.action) {
       const action = message.action as MessageAction;
-      const suffix = message.fromId === this.appUsersManager.getSelf().id ? 'You' : '';
+      const suffix = message.fromId === this.appUsersManager.getSelf()?.id ? 'You' : '';
       let migrateFrom: PeerId, migrateTo: PeerId;
 
       if((action as MessageAction.messageActionChatEditPhoto).photo) {
@@ -4403,7 +4403,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     // * second rule for saved messages, because there is no 'out' flag
-    if(/* message.pFlags.out ||  */this.getMessagePeer(message) === this.appUsersManager.getSelf().id) {
+    if(/* message.pFlags.out ||  */this.getMessagePeer(message) === this.appUsersManager.getSelf()?.id) {
       return true;
     }
 
@@ -5491,7 +5491,7 @@ export class AppMessagesManager extends AppManager {
     };
   }
 
-  private getNotifyPeerSettings(peerId: PeerId, threadId?: number) {
+  public getNotifyPeerSettings(peerId: PeerId, threadId?: number) {
     const inputNotifyPeer = this.appPeersManager.getInputNotifyPeerById({peerId, ignorePeerId: true, threadId});
     return Promise.all([
       this.appNotificationsManager.getNotifyPeerTypeSettings(),
@@ -5516,6 +5516,7 @@ export class AppMessagesManager extends AppManager {
       // if(rootScope.peerId === peerId && !rootScope.idle.isIDLE) {
       // continue;
       // }
+
 
       const notifyPeerToHandle = this.notificationsToHandle[key];
       this.getNotifyPeerSettings(peerId.toPeerId(), threadId ? +threadId : undefined)

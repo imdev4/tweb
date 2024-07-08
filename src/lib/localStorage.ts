@@ -14,6 +14,7 @@ import {IS_WORKER} from '../helpers/context';
 import makeError from '../helpers/makeError';
 import {WorkerTaskTemplate} from '../types';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
+import {appAccountsManager, type CredentialKeys} from './appManagers/appAccountsManager';
 // import { stringify } from '../helpers/json';
 
 class LocalStorage<Storage extends Record<string, any>> {
@@ -69,7 +70,9 @@ class LocalStorage<Storage extends Record<string, any>> {
             }
 
             const stringified = JSON.stringify(value);
-            localStorage.setItem(this.prefix + key, stringified);
+            const prefixedKey = this.prefix + key;
+            localStorage.setItem(prefixedKey, stringified);
+            appAccountsManager.updateCurrentValue(prefixedKey as CredentialKeys, stringified);
           } catch(err) {
             this.useStorage = false;
             lastError = err;

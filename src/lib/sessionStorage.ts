@@ -7,6 +7,7 @@
 import type {AppInstance} from './mtproto/singleInstance';
 import type {UserAuth} from './mtproto/mtproto_config';
 import type {DcId} from '../types';
+import type {AccountsItem} from './appManagers/appAccountsManager';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import LocalStorageController from './localStorage';
 
@@ -32,7 +33,8 @@ const sessionStorage = new LocalStorageController<{
     canRedirect: boolean,
     ts: number
   },
-  k_build: number
+  k_build: number,
+  accounts: AccountsItem[]
 }>(/* ['kz_version'] */);
 MOUNT_CLASS_TO.appStorage = sessionStorage;
 export default sessionStorage;

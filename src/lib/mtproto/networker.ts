@@ -341,7 +341,7 @@ export default class MTPNetworker {
     return this.pushMessage(message, options);
   }
 
-  public wrapApiCall(method: string, params: any = {}, options: InvokeApiOptions = {}) {
+  public wrapApiCall(method: string, params: any = {}, options: InvokeApiOptions = {}): CancellablePromise<any> {
     const log = this.log.bindPrefix('wrapApiCall');
     const serializer = new TLSerialization(options);
 

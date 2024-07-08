@@ -131,6 +131,7 @@ import getSelectedNodes from '../../helpers/dom/getSelectedNodes';
 import {setQuizHint} from '../../components/poll';
 import anchorCallback from '../../helpers/dom/anchorCallback';
 import PopupPremium from '../../components/popups/premium';
+import {backgroundConnections} from '../backgroundConnections';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -571,6 +572,10 @@ export class AppImManager extends EventListenerBase<{
 
     rootScope.addEventListener('gif_updated', ({saved}) => {
       toastNew({langPackKey: saved ? 'GifSavedHint' : 'RemovedGIFFromFavorites'});
+    });
+
+    backgroundConnections.addEventListener('newMessage', (options) => {
+      uiNotificationsManager.buildNotificationQueue(options);
     });
 
     apiManagerProxy.addEventListener('notificationBuild', async(options) => {

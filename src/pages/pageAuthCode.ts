@@ -19,6 +19,7 @@ import RLottiePlayer from '../lib/rlottie/rlottiePlayer';
 import setBlankToAnchor from '../lib/richTextProcessor/setBlankToAnchor';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import Icon from '../components/icon';
+import {appAccountsManager} from '../lib/appManagers/appAccountsManager';
 
 let authSentCode: AuthSentCode.authSentCode = null;
 
@@ -53,9 +54,17 @@ const submitCode = (code: string) => {
       case 'auth.authorization':
         await rootScope.managers.apiManager.setUser(response.user);
 
-        import('./pageIm').then((m) => {
-          m.default.mount();
-        });
+        if(appAccountsManager.isAddingAccountMode()) {
+          await appAccountsManager.cacheCurrent();
+          await appAccountsManager.exitAddingAccountMode();
+          return;
+        } else {
+          import('./pageIm').then(async(m) => {
+            m.default.mount();
+            await appAccountsManager.cacheCurrent();
+          });
+        }
+
         cleanup();
         break;
       case 'auth.authorizationSignUpRequired':

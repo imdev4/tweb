@@ -122,22 +122,29 @@ export class EmoticonsDropdown extends DropdownHover {
   public textColor: string;
 
   public isStandalone: boolean;
+  public noEmoji: boolean;
+  private customStickerSelect?: (docId: string) => void;
 
   constructor(options: {
     customParentElement?: HTMLElement,
     // customAnchorElement?: HTMLElement,
     getOpenPosition?: () => DOMRectEditable,
     tabsToRender?: EmoticonsTab[],
-    customOnSelect?: (emoji: {element: HTMLElement} & ReturnType<typeof getEmojiFromElement>) => void,
+    customOnSelect?: (emoji: { element: HTMLElement } & ReturnType<typeof getEmojiFromElement>) => void,
+    customStickerSelect?: (docId: string) => void,
+    noEmoji?: boolean,
+    noClose?: boolean,
+    isStandalone?: boolean
   } = {}) {
     super({
       element: renderEmojiDropdownElement(),
-      ignoreOutClickClassName: 'input-message-input'
+      ignoreOutClickClassName: 'input-message-input',
+      noClose: options.noClose
     });
     safeAssign(this, options);
 
     this.listenerSetter = new ListenerSetter();
-    this.isStandalone = !!options?.tabsToRender;
+    this.isStandalone = options.isStandalone || !!options?.tabsToRender;
     this.element.classList.toggle('is-standalone', this.isStandalone)
 
     this.rights = {
@@ -354,7 +361,10 @@ export class EmoticonsDropdown extends DropdownHover {
 
     const HIDE_EMOJI_TAB = IS_APPLE_MOBILE && false;
 
-    const INIT_TAB_ID = HIDE_EMOJI_TAB ? this.getTab(StickersTab).tabId : this.getTab(EmojiTab).tabId;
+    const INIT_TAB_ID = (this.noEmoji || HIDE_EMOJI_TAB) ? this.getTab(StickersTab).tabId : this.getTab(EmojiTab).tabId;
+    if(this.noEmoji) {
+      this.tabId = INIT_TAB_ID;
+    }
 
     if(HIDE_EMOJI_TAB) {
       (this.tabsEl.children[1] as HTMLElement).classList.add('hide');
@@ -651,6 +661,10 @@ export class EmoticonsDropdown extends DropdownHover {
 
     const docId = target.dataset.docId;
     if(!docId) return false;
+
+    if(this.customStickerSelect) {
+      return this.customStickerSelect(docId);
+    }
 
     return this.sendDocId({document: docId, clearDraft, silent, target, ignoreNoPremium});
   };

@@ -119,7 +119,7 @@ type AA<T> = {
 };
 
 type T = Awaited<ReturnType<typeof createManagers>>;
-type ProxiedManagers = {
+export type ProxiedManagers = {
   [name in keyof T]?: ModifyFunctionsToAsync<T[name]>;
 } & {
   acknowledged?: {

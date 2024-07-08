@@ -22,7 +22,7 @@ import wrapAttachBotIcon from './wrappers/attachBotIcon';
 
 type ButtonMenuItemInner = Omit<Parameters<typeof ButtonMenuSync>[0], 'listenerSetter'>;
 export type ButtonMenuItemOptions = {
-  icon?: Icon,
+  icon?: Icon | HTMLElement,
   iconDoc?: Document.document,
   danger?: boolean,
   new?: boolean,
@@ -58,7 +58,7 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
 
   const {icon, iconDoc, className, text, onClick, checkboxField, noCheckboxClickListener} = options;
   const el = document.createElement('div');
-  const iconSplitted = icon?.split(' ');
+  const iconSplitted = typeof icon === 'string' ? icon?.split(' ') : [];
   el.className = 'btn-menu-item rp-overflow' +
     (iconSplitted?.length > 1 ? ' ' + iconSplitted.slice(1).join(' ') : '') +
     (className ? ' ' + className : '') +
@@ -68,8 +68,12 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
     ripple(el);
   }
 
-  if(iconSplitted) {
+  if(iconSplitted.length) {
     el.append(Icon(iconSplitted[0] as Icon, 'btn-menu-item-icon'));
+  }
+
+  if(icon instanceof HTMLElement) {
+    el.append(icon);
   }
 
   let textElement = options.textElement;

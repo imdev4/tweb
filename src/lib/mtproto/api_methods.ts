@@ -28,7 +28,14 @@ export type ApiLimitType = 'pin' | 'folderPin' | 'folders' |
   'favedStickers' | 'reactions' | 'bio' | 'topicPin' | 'caption' |
   'chatlistsJoined' | 'chatlistInvites' | 'channels' | 'links' |
   'gifs' | 'folderPeers' | 'uploadFileParts' | 'recommendedChannels' |
-  'savedPin';
+  'savedPin' | 'accounts';
+
+const defaultLimits: Record<string, { default: number; premium: number}> = {
+  accounts: {
+    default: 3,
+    premium: 5
+  }
+};
 
 export default abstract class ApiManagerMethods extends AppManager {
   private afterMessageIdTemp: number;
@@ -385,12 +392,16 @@ export default abstract class ApiManagerMethods extends AppManager {
         folderPeers: ['dialog_filters_chats_limit_default', 'dialog_filters_chats_limit_premium'],
         uploadFileParts: ['upload_max_fileparts_default', 'upload_max_fileparts_premium'],
         recommendedChannels: ['recommended_channels_limit_default', 'recommended_channels_limit_premium'],
-        savedPin: ['saved_dialogs_pinned_limit_default', 'saved_dialogs_pinned_limit_premium']
+        savedPin: ['saved_dialogs_pinned_limit_default', 'saved_dialogs_pinned_limit_premium'],
+        accounts: null
       };
 
       isPremium ??= this.rootScope.premium;
 
       const a = map[type];
+      if(a === null) {
+        return isPremium ? defaultLimits[type].premium : defaultLimits[type].default;
+      }
       const key = Array.isArray(a) ? a[isPremium ? 1 : 0] : a;
       return appConfig[key] as number;
     });

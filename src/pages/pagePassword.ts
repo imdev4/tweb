@@ -20,6 +20,7 @@ import replaceContent from '../helpers/dom/replaceContent';
 import toggleDisability from '../helpers/dom/toggleDisability';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import rootScope from '../lib/rootScope';
+import {appAccountsManager} from '../lib/appManagers/appAccountsManager';
 
 const TEST = false;
 let passwordInput: HTMLInputElement;
@@ -86,15 +87,20 @@ const onFirstMount = (): Promise<any> => {
     passwordInputField.setValueSilently('' + Math.random()); // prevent saving suggestion
     passwordInputField.setValueSilently(value); // prevent saving suggestion
 
-    rootScope.managers.passwordManager.check(value, state).then((response) => {
-      // console.log('passwordManager response:', response);
-
+    rootScope.managers.passwordManager.check(value, state).then(async(response) => {
       switch(response._) {
         case 'auth.authorization':
           clearInterval(getStateInterval);
-          import('./pageIm').then((m) => {
-            m.default.mount();
-          });
+          if(appAccountsManager.isAddingAccountMode()) {
+            await appAccountsManager.cacheCurrent();
+            await appAccountsManager.exitAddingAccountMode();
+            return;
+          } else {
+            import('./pageIm').then(async(m) => {
+              m.default.mount();
+              await appAccountsManager.cacheCurrent();
+            });
+          }
           if(monkey) monkey.remove();
           break;
         default:

@@ -20,6 +20,7 @@ import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import Button from '../components/button';
 import {putPreloader} from '../components/putPreloader';
 import Icon from '../components/icon';
+import {appAccountsManager} from '../lib/appManagers/appAccountsManager';
 
 let authCode: AuthState.signUp['authCode'] = null;
 
@@ -129,10 +130,17 @@ const onFirstMount = async() => {
         case 'auth.authorization': // success
           await rootScope.managers.apiManager.setUser(response.user);
 
-          sendAvatar().finally(() => {
-            import('./pageIm').then((m) => {
-              m.default.mount();
-            });
+          sendAvatar().finally(async() => {
+            if(appAccountsManager.isAddingAccountMode()) {
+              await appAccountsManager.cacheCurrent();
+              await appAccountsManager.exitAddingAccountMode();
+              return;
+            } else {
+              import('./pageIm').then(async(m) => {
+                m.default.mount();
+                await appAccountsManager.cacheCurrent();
+              });
+            }
           });
 
           break;

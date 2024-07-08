@@ -9,8 +9,10 @@ import loadFonts from '../helpers/dom/loadFonts';
 import I18n from '../lib/langPack';
 import rootScope from '../lib/rootScope';
 import Page from './page';
+import {appAccountsManager} from '../lib/appManagers/appAccountsManager';
 
 const onFirstMount = () => {
+  appAccountsManager.init();
   rootScope.managers.appStateManager.pushToState('authState', {_: 'authStateSignedIn'});
   // ! TOO SLOW
   /* appStateManager.saveState(); */

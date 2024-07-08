@@ -243,7 +243,7 @@ export class AppUsersManager extends AppManager {
   };
 
   public indexMyself() {
-    const userId = this.getSelf().id;
+    const userId = this.getSelf()?.id;
     this.contactsIndex.indexObject(userId, this.getUserSearchText(userId));
   }
 
@@ -815,7 +815,7 @@ export class AppUsersManager extends AppManager {
       return peerId.toUserId();
     }
 
-    return (isObject<InputUser>(userId) && userId._ === 'inputUserSelf' && this.getSelf().id) || NULL_PEER_ID;
+    return (isObject<InputUser>(userId) && userId._ === 'inputUserSelf' && this.getSelf()?.id) || NULL_PEER_ID;
   }
 
   public getUserInput(id: UserId): InputUser {
@@ -1130,7 +1130,7 @@ export class AppUsersManager extends AppManager {
   }
 
   public updateMyOnlineStatus(offline: boolean) {
-    this.setUserStatus(this.getSelf().id, offline);
+    this.setUserStatus(this.getSelf()?.id, offline);
     return this.apiManager.invokeApiSingle('account.updateStatus', {offline});
   }
 
@@ -1205,7 +1205,7 @@ export class AppUsersManager extends AppManager {
     }).then(() => {
       this.apiUpdatesManager.processLocalUpdate({
         _: 'updateUserEmojiStatus',
-        user_id: this.getSelf().id,
+        user_id: this.getSelf()?.id,
         emoji_status: emojiStatus
       });
     });

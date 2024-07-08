@@ -11,7 +11,7 @@
 
 import type {UserAuth} from './mtproto_config';
 import type {DcAuthKey, DcId, DcServerSalt, InvokeApiOptions} from '../../types';
-import type {MethodDeclMap} from '../../layer';
+import type {MethodDeclMap, UpdatesState, UpdatesDifference} from '../../layer';
 import type TcpObfuscated from './transports/tcpObfuscated';
 import sessionStorage from '../sessionStorage';
 import MTPNetworker, {MTMessage} from './networker';
@@ -455,6 +455,55 @@ export class ApiManager extends ApiManagerMethods {
       this.setOnDrainIfNeeded(networker);
       return networker;
     });
+  }
+
+  public async getBackgroundNetworker(accountId: number, dcId: number, authKey: Uint8Array, authKeyId: Uint8Array, serverSalt: Uint8Array, options: InvokeApiOptions): Promise<void> {
+    const connectionType: ConnectionType = 'client';
+    const transport = this.chooseServer(dcId, connectionType, 'https');
+    const networker = this.networkerFactory.getNetworker(dcId, authKey, authKeyId, serverSalt, options);
+    this.changeNetworkerTransport(networker, transport);
+    networker.onTransportOpen();
+    networker.scheduleRequest();
+
+    const state: UpdatesState.updatesState = await networker.wrapApiCall('updates.getState');
+    const latestState = state;
+
+    this.trackBackgroundChanges(accountId, latestState, networker);
+  }
+
+  private async trackBackgroundChanges(accountId: number, latestState: UpdatesState.updatesState, networker: MTPNetworker): Promise<void> {
+    try {
+      const difference: UpdatesDifference = await networker.wrapApiCall('updates.getDifference', {
+        pts: latestState.pts,
+        date: latestState.date,
+        qts: latestState.qts
+      }, {
+        timeout: 0x7fffffff
+      });
+
+      if(difference._ !== 'updates.differenceEmpty' && difference._ !== 'updates.differenceTooLong') {
+        if(difference.new_messages?.length > 0) {
+          const {unread_count}: UpdatesState.updatesState = await networker.wrapApiCall('updates.getState');
+
+          this.rootScope.dispatchEvent('background_account_update', {
+            accountId,
+            unread_count,
+            messages: difference.new_messages
+          });
+        }
+
+        const nextState = difference._ === 'updates.difference' ? difference.state : difference.intermediate_state;
+        latestState.seq = nextState.seq;
+        latestState.pts = nextState.pts;
+        latestState.date = nextState.date;
+      }
+
+
+      setTimeout(() => {
+        this.trackBackgroundChanges(accountId, latestState, networker);
+      }, 1e3);
+    } catch(err) {
+    }
   }
 
   public getNetworkerVoid(dcId: DcId) {

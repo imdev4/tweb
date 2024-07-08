@@ -608,8 +608,8 @@ export class Authorizer extends AppManager {
             nonce: randomize(new Uint8Array(16))
           };
 
-          const promise = this.sendReqPQ(auth);
-          resolve(await promise);
+          const promise = await this.sendReqPQ(auth);
+          resolve(promise);
           return;
         } catch(err) {
           error = err;

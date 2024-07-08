@@ -20,6 +20,13 @@ class PagesManager {
   public scrollableDiv: HTMLElement;
 
   constructor() {
+    this.construct();
+  }
+
+  public construct() {
+    this.pageId = -1;
+    this.page = null;
+
     this.pagesDiv = document.getElementById('auth-pages') as HTMLDivElement;
     this.scrollableDiv = this.pagesDiv.querySelector('.scrollable') as HTMLElement;
     this.selectTab = horizontalMenu(null, this.scrollableDiv.querySelector('.tabs-container') as HTMLDivElement, null, () => {

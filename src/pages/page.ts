@@ -11,13 +11,18 @@ export default class Page {
   private installed = false;
 
   constructor(
-    className: string,
+    private className: string,
     public isAuthPage: boolean,
     private onFirstMount?: (...args: any[]) => Promise<any> | void,
     private onMount?: (...args: any[]) => Promise<any> | void,
     public onShown?: () => void
   ) {
-    this.pageEl = document.body.querySelector('.' + className) as HTMLDivElement;
+    this.pageEl = document.body.querySelector('.' + this.className) as HTMLDivElement;
+  }
+
+  public remount() {
+    this.pageEl = document.body.querySelector('.' + this.className) as HTMLDivElement;
+    this.installed = false;
   }
 
   public async mount(...args: any[]) {

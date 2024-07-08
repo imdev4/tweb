@@ -330,6 +330,7 @@ export const AvatarNew = (props: {
   processImageOnLoad?: (image: HTMLImageElement) => void,
   meAsNotes?: boolean,
   onStoriesStatus?: (has: boolean) => void
+  providedPhoto?: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto
 }) => {
   const [ready, setReady] = createSignal(false);
   const [icon, setIcon] = createSignal<Icon>();
@@ -599,7 +600,7 @@ export const AvatarNew = (props: {
     }
 
     const size: PeerPhotoSize = isBig ? 'photo_big' : 'photo_small';
-    const photo = getPeerPhoto(peer);
+    const photo = getPeerPhoto(peer) || props.providedPhoto;
     const avatarAvailable = !!photo;
     const avatarRendered = avatarAvailable && !!media(); // if avatar isn't available, let's reset it
     const isAvatarCached = avatarAvailable && apiManagerProxy.isAvatarCached(peerId, size);

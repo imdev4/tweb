@@ -52,6 +52,13 @@ const a: {[type in ApiLimitType]?: {
     descriptionPremium: 'LimitReachedPinDialogsPremium',
     descriptionLocked: 'LimitReachedPinDialogsLocked',
     icon: 'limit_pin'
+  },
+  accounts: {
+    title: 'LimitReached',
+    description: 'LimitReachedConnectedAccounts',
+    descriptionPremium: 'LimitReachedConnectedAccountsPremium',
+    descriptionLocked: 'LimitReachedConnectedAccountsLocked',
+    icon: 'user'
   }
 };
 
